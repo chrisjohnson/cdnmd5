@@ -245,6 +245,11 @@ Class Cdnmd5 {
 			debug(compact('path', 'init', 'absolutes'));
 			throw OutOfBoundsException('Cdnmd5::resolvePath() returned empty');
 		}
+		foreach (['?', '#'] as $char) {
+			if (strpos($path, $char) !== false) {
+				$path = substr($path, 0, strpos($path, $char));
+			}
+		}
 		return DIRECTORY_SEPARATOR . $path;
 	}
 
@@ -385,7 +390,7 @@ Class Cdnmd5 {
 		$filepath = Cdnmd5::getFullPath($filepath);
 		if (!is_file($filepath)) {
 			//debug(compact('init', 'filepath'));
-			throw new OutOfBoundsException('Cdnmd5::makeHash - not a valid file');
+			throw new OutOfBoundsException('Cdnmd5::makeHash - not a valid file: ' . $filepath);
 		}
 		$_this = Cdnmd5::getInstance();
 		// make hash for file
@@ -520,6 +525,7 @@ Class Cdnmd5 {
 			$_this->makeHash($filepath);
 		} catch (OutOfBoundsException $e) {
 			//echo 'Caught exception: ', $filepath, ' -- ',  $e->getMessage(), "\n";
+			debug($e);
 			return;
 		}
 
@@ -688,20 +694,23 @@ Class Cdnmd5 {
 			return array();
 		}
 		preg_match_all('~\bbackground(-image)?\s*:(.*?)\(\s*(\'|")?(?<image>.*?)\3?\s*\)~i', $content, $matches);
-		if (empty($matches['image'])) {
+		preg_match_all('/url\(\s*(\'|")?(?<url>.*?)\1?\)/i', $content, $urlmatches);
+		if (empty($matches['image']) && empty($urlmatches['image'])) {
 			return array();
 		}
-		$urls = $matches['image'];
-		// clean out all URLs which are not valid URLs (ending in image ext)
-		$exts = array('gif', 'png', 'jpg', 'jpeg');
-		foreach (array_keys($urls) as $i) {
-			// prep "bad" URLs
-			$url = trim(trim(trim($urls[$i]), '"\''));
+		$urls = array_merge($matches['image'], $urlmatches['url']);
+		// clean out all URLs which are not valid URLs (ending in resource ext)
+		$exts = array('gif', 'png', 'jpg', 'jpeg', 'eot', 'ttf', 'svg', 'woff');
+		foreach ($urls as $i => $url) {
+			if (preg_match('/((http|https):)?\/\//i', $urls[$i])) {
+				unset($urls[$i]);
+				continue;
+			}
+			// Remove everything after ? or #
+			$url = trim(trim(trim($url), '"\''));
 			$url = str_replace('#', '?', $url);
 			if (strpos($url, '?')!==false) {
-				// remove the "?" and everything after
-				$parts = explode('?', $url);
-				$url = array_shift($parts);
+				$url = substr($url, 0, strpos($url, '?'));
 			}
 			// get the ext
 			$parts = explode('.', $url);
