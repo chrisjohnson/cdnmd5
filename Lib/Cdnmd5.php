@@ -529,7 +529,7 @@ Class Cdnmd5 {
 			return;
 		}
 
-		return $_this->transfer($filepath);
+		return $_this->transfer($filepath, $config);
 	}
 
 	/**
@@ -558,7 +558,7 @@ Class Cdnmd5 {
 		}
 		// do we need to translate the file to an alternate filepath?
 		$filepathInit = $filepath;
-		$filepath = $_this->makeTranslation($filepath);
+		$filepath = $_this->makeTranslation($filepath, @$config['translation_protocol']);
 		if ($filepath != $filepathInit) {
 			// we changed the file path, but we need to the the new hash into
 			// the old one...
@@ -635,7 +635,7 @@ Class Cdnmd5 {
 	 *
 	 * This should all happen before "normal" processing.
 	 */
-	public static function makeTranslation($filepath) {
+	public static function makeTranslation($filepath, $protocol = 'http') {
 		$_this = Cdnmd5::getInstance();
 		$filepath = $_this->getFullPath($filepath);
 		extract($_this->splitFilename($filepath));
@@ -660,7 +660,7 @@ Class Cdnmd5 {
 				continue;
 			}
 			//$newUrl = $_this->url($full, false);
-			$newUrl = $_this->url($full);
+			$newUrl = $_this->url($full, $protocol);
 			if (empty($newUrl)) {
 				// unable to find url of file...
 				continue;
